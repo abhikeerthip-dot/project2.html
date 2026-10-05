@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rolling Dice</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #141e30, #243b55);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            margin-bottom: 25px;
+        }
+
+        input {
+            width: 100px;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 11px 25px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            color: white;
+        }
+
+        #startBtn {
+            background: #28a745;
+        }
+
+        #stopBtn {
+            background: #dc3545;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .board {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: rgba(255,255,255,0.08);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .dice {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: white;
+            color: #111;
+            border-radius: 12px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+
+            left: 10px;
+            top: 10px;
+
+            transition:
+                left 0.8s ease-in-out,
+                top 0.8s ease-in-out,
+                transform 0.8s ease-in-out;
+        }
+
+        .dot {
+            width: 14px;
+            height: 14px;
+            background: #111;
+            border-radius: 50%;
+            align-self: center;
+            justify-self: center;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🎲 Rolling Dice</h1>
+
+    <div class="controls">
+        <label>
+            Number of Turns:
+            <input type="number" id="turns" value="3" min="1" max="100">
+        </label>
+
+        <br>
+
+        <button id="startBtn">▶ Start</button>
+        <button id="stopBtn" disabled>⏹ Stop</button>
+    </div>
+
+    <div class="board" id="board">
+
+        <div class="dice" id="dice">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span class="dot"></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+
+    </div>
+
+    <div class="result" id="result">
+        Dice Value: 1
+    </div>
+
+</div>
+
+<script>
+    const board = document.getElementById("board");
+    const dice = document.getElementById("dice");
+
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    const turnsInput = document.getElementById("turns");
+    const result = document.getElementById("result");
+
+    let rolling = false;
+    let animationTimer = null;
+
+    let currentTurn = 0;
+    let direction = 0;
+
+    /*
+        Directions:
+
+        0 = Right → Left
+        1 = Left → Right
+        2 = Top → Bottom
+        3 = Bottom → Top
+    */
+
+    const diceFaces = {
+        1: [4],
+        2: [0, 8],
+        3: [0, 4, 8],
+        4: [0, 2, 6, 8],
+        5: [0, 2, 4, 6, 8],
+        6: [0, 2, 3, 5, 6, 8]
+    };
+
+    function showDice(number) {
+
+        const cells = dice.children;
+
+        for (let i = 0; i < cells.length; i++) {
+            cells[i].classList.remove("dot");
+        }
+
+        diceFaces[number].forEach(index => {
+            cells[index].classList.add("dot");
+        });
+
+        result.textContent = "Dice Value: " + number;
+    }
+
+    function randomDice() {
+        return Math.floor(Math.random() * 6) + 1;
+    }
+
+    function moveDice() {
+
+        if (!rolling) return;
+
+        const boardWidth = board.clientWidth;
+        const boardHeight = board.clientHeight;
+
+        const diceWidth = dice.offsetWidth;
+        const diceHeight = dice.offsetHeight;
+
+        const maxX = boardWidth - diceWidth - 10;
+        const maxY = boardHeight - diceHeight - 10;
+
+        let x;
+        let y;
+
+        /*
+            Movement sequence:
+            Right → Left
+            Left → Right
+            Top → Bottom
+            Bottom → Top
+        */
+
+        if (direction === 0) {
+            // Right → Left
+            x = Math.random() * maxX;
+            y = 10;
+
+        } else if (direction === 1) {
+            // Left → Right
+            x = Math.random() * maxX;
+            y = maxY;
+
+        } else if (direction === 2) {
+            // Top → Bottom
+            x = maxX;
+            y = Math.random() * maxY;
+
+        } else {
+            // Bottom → Top
+            x = 10;
+            y = Math.random() * maxY;
+        }
+
+        dice.style.left = x + "px";
+        dice.style.top = y + "px";
+
+        dice.style.transform =
+            "rotate(" + (Math.random() * 360) + "deg)";
+
+        showDice(randomDice());
+
+        /*
+            After every movement, change direction.
+        */
+
+        direction++;
+
+        if (direction > 3) {
+            direction = 0;
+            currentTurn++;
+        }
+
+        /*
+            Stop automatically when requested
+            number of turns is completed.
+        */
+
+        const totalTurns = parseInt(turnsInput.value);
+
+        if (currentTurn >= totalTurns) {
+            stopRolling();
+            return;
+        }
+
+        animationTimer = setTimeout(moveDice, 850);
+    }
+
+    function startRolling() {
+
+        if (rolling) return;
+
+        let turns = parseInt(turnsInput.value);
+
+        if (isNaN(turns) || turns < 1) {
+            alert("Please enter a valid number of turns.");
+            return;
+        }
+
+        rolling = true;
+        currentTurn = 0;
+        direction = 0;
+
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        turnsInput.disabled = true;
+
+        moveDice();
+    }
+
+    function stopRolling() {
+
+        rolling = false;
+
+        clearTimeout(animationTimer);
+
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        turnsInput.disabled = false;
+
+        dice.style.transform = "rotate(0deg)";
+    }
+
+    startBtn.addEventListener("click", startRolling);
+
+    stopBtn.addEventListener("click", stopRolling);
+
+    showDice(1);
+</script>
+
+</body>
+</html>
